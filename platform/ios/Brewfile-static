@@ -1,0 +1,10 @@
+# Dependencies for building all dependencies from source as static libraries.
+# Needed for distributable builds.
+brew "bash"  # macOS bash is too old
+brew "cmake"
+brew "git"
+brew "ninja"
+brew "pcre2" # for pcre2grep
+brew "zip"
+# accelerate builds with ccache
+brew "ccache"

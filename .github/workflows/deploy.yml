@@ -59,6 +59,11 @@ jobs:
       smoke-test: test/smoke-test.sh
       test-files: test/smoke-test.sh
 
+  ios:
+    name: iOS
+    uses: ./.github/workflows/deploy-ios.yml
+    needs: [prepare]
+
   windows:
     name: Windows
     uses: ./.github/workflows/deploy-windows.yml

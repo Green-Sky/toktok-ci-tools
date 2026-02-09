@@ -177,7 +177,7 @@ jobs:
         run: tar zxf ${{ inputs.project-name }}-linux.tar.gz
       - name: Install dependencies
         run: sudo apt-get update && sudo apt-get install -y --no-install-recommends
-          at-spi2-core imagemagick libegl1
+          at-spi2-core imagemagick libegl1 libgles2
       - name: Run ${{ inputs.project-name }}
         run: xvfb-run -f /tmp/xvfb.auth ./bundle/${{ inputs.project-name }} & sleep 5
       - name: Take a screenshot

@@ -69,12 +69,19 @@ if [ -z "${PROJECT_NAME+x}" ]; then
   exit 1
 fi
 
-if [[ "$IOS_ARCH" == *"iphonesimulator"* ]] || [[ "$IOS_ARCH" == "x86_64" ]]; then
+if [[ "$IOS_ARCH" == "iphonesimulator-"* ]]; then
   IOS_PLATFORM="iphonesimulator"
+  CMAKE_ARCH="${IOS_ARCH#iphonesimulator-}"
+elif [[ "$IOS_ARCH" == "ios-"* ]]; then
+  IOS_PLATFORM="iphoneos"
+  CMAKE_ARCH="${IOS_ARCH#ios-}"
+else
+  # Fallback for simple architecture strings
+  CMAKE_ARCH="$IOS_ARCH"
+  if [[ "$IOS_ARCH" == "x86_64" ]]; then
+    IOS_PLATFORM="iphonesimulator"
+  fi
 fi
-
-# Extract the base architecture (e.g., "arm64" from "arm64-iphonesimulator")
-CMAKE_ARCH="${IOS_ARCH%-iphonesimulator}"
 
 readonly BIN_NAME="$PROJECT_NAME-$IOS_ARCH-$IOS_VERSION.ipa"
 CMAKE="$DEP_PREFIX/qt/bin/qt-cmake"

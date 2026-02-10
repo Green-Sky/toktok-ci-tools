@@ -24,11 +24,11 @@ jobs:
     name: Build
     strategy:
       matrix:
-        arch: [arm64, x86_64, arm64-iphonesimulator]
+        arch: [ios-arm64, iphonesimulator-arm64, iphonesimulator-x86_64]
         ios: ["15.0"]
         exclude:
-          - arch: ${{ github.event_name == 'pull_request' && !contains(github.event.pull_request.labels.*.name, 'packaging') && 'x86_64' }}
-          - arch: ${{ github.event_name == 'pull_request' && !contains(github.event.pull_request.labels.*.name, 'packaging') && 'arm64-iphonesimulator' }}
+          - arch: ${{ github.event_name == 'pull_request' && !contains(github.event.pull_request.labels.*.name, 'packaging') && 'iphonesimulator-x86_64' }}
+          - arch: ${{ github.event_name == 'pull_request' && !contains(github.event.pull_request.labels.*.name, 'packaging') && 'iphonesimulator-arm64' }}
     runs-on: macos-14
     permissions:
       contents: write
@@ -67,13 +67,7 @@ jobs:
           echo "artifact=$ARTIFACT" >>$GITHUB_OUTPUT
           echo "artifact-ref=$PROJECT_NAME-${{ github.sha }}-ios-${{ matrix.ios }}-${{ matrix.arch }}" >>$GITHUB_OUTPUT
 
-          if [ "${{ matrix.arch }}" = "x86_64" ]; then
-            echo "qt_arch=iphonesimulator-x86_64" >>$GITHUB_OUTPUT
-          elif [ "${{ matrix.arch }}" = "arm64-iphonesimulator" ]; then
-            echo "qt_arch=iphonesimulator-arm64" >>$GITHUB_OUTPUT
-          else
-            echo "qt_arch=ios-arm64" >>$GITHUB_OUTPUT
-          fi
+          echo "qt_arch=${{ matrix.arch }}" >>$GITHUB_OUTPUT
       - name: Download Qt
         if: inputs.need-qt
         run: |

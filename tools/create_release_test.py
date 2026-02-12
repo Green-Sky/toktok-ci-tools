@@ -50,5 +50,44 @@ class TestDashboardRenderer(unittest.TestCase):
         self.assertIn("[x] Finalize release", rendered)
 
 
+class TestReleaserLogic(unittest.TestCase):
+    def setUp(self) -> None:
+        self.config = Config(
+            branch="master",
+            main_branch="master",
+            dryrun=False,
+            force=True,
+            github_actions=True,
+            issue=1,
+            production=True,
+            rebase=True,
+            resume=False,
+            verify=False,
+            version="v1.0.0",
+            upstream="origin",
+        )
+        self.github = MagicMock()
+        self.git = MagicMock()
+        self.releaser = Releaser(self.config, self.git, self.github)
+
+    def test_report_failure(self) -> None:
+        self.github.actor.return_value = "human"
+        self.github.get_issue.return_value = MagicMock(
+            body="### Release progress\n[ ] ..."
+        )
+
+        self.releaser.report_failure("v1.0.0", Exception("Something went wrong"))
+
+        # Check that issue was reassigned
+        self.github.issue_unassign.assert_called_with(1, ["toktok-releaser"])
+        self.github.issue_assign.assert_called_with(1, ["human"])
+
+        # Check that dashboard was updated
+        self.github.change_issue.assert_called()
+        args, kwargs = self.github.change_issue.call_args
+        self.assertEqual(args[0], 1)
+        self.assertIn("❌ **Failure:** Something went wrong", args[1]["body"])
+
+
 if __name__ == "__main__":
     unittest.main()

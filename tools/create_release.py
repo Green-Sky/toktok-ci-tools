@@ -5,6 +5,7 @@ import argparse
 import os
 import re
 import subprocess  # nosec
+import traceback
 from dataclasses import dataclass
 
 import create_tarballs
@@ -123,6 +124,7 @@ class Releaser:
         self.config = config
         self.git = git_prov
         self.github = github_prov
+        self.version = ""
 
     def require(self, condition: bool, message: str | None = None) -> None:
         if not condition:
@@ -130,22 +132,50 @@ class Releaser:
 
     def assign_to_user(
         self,
-        s: stage.Stage,
+        s: stage.Stage | None,
         version: str,
         task: str | None = None,
         action: str = "",
         instruction: str | None = None,
     ) -> stage.UserAbort:
         """Assign the issue to the acting user for them to take some action."""
-        self.github.issue_unassign(self.config.issue, ["toktok-releaser"])
-        self.github.issue_assign(self.config.issue, [self.github.actor()])
+        if self.config.issue:
+            self.github.issue_unassign(self.config.issue, ["toktok-releaser"])
+            self.github.issue_assign(self.config.issue, [self.github.actor()])
         self.update_dashboard(version, current_task=task, instruction=instruction)
-        s.ok(f"Assigned to {self.github.actor()}")
+        if s:
+            s.ok(f"Assigned to {self.github.actor()}")
         return stage.UserAbort(f"Returning to the user to {action}")
+
+    def report_failure(self, version: str, exception: Exception) -> None:
+        """Report a failure to the release tracking issue."""
+        if not self.config.issue:
+            return
+
+        instruction = f"❌ **Failure:** {exception}"
+        self.assign_to_user(
+            None,
+            version,
+            action="fix the failure",
+            instruction=instruction,
+        )
+
+    def run(self) -> None:
+        """Run the release process."""
+        try:
+            self.run_stages()
+        except stage.UserAbort as e:
+            print(e.message)
+        except Exception as e:
+            traceback.print_exc()
+            self.report_failure(self.version, e)
+            raise e
 
     def compute_done_milestones(self, version: str) -> set[str]:
         """Heuristics to determine which milestones are completed."""
-        done = set()
+        done: set[str] = set()
+        if not version:
+            return done
 
         # 1. Preparation
         if self.github.find_pr_for_branch(
@@ -200,14 +230,19 @@ class Releaser:
         ]
 
         lines = []
+        instruction_rendered = False
         for name, desc in milestones:
             status = "[x]" if name in done else "[ ]"
             if current_task == name:
                 lines.append(f"- {status} **Current Step: {desc}**")
                 if instruction:
                     lines.append(f"  > ℹ️ **Action Required:** {instruction}")
+                    instruction_rendered = True
             else:
                 lines.append(f"- {status} {desc}")
+
+        if instruction and not instruction_rendered:
+            lines.append(f"\nℹ️ **Action Required:** {instruction}")
 
         return "\n".join(lines)
 
@@ -272,6 +307,7 @@ class Releaser:
                 if self.config.version == "latest":
                     version = self.github.latest_release()
                     s.ok(f"Using latest release {version}")
+                    self.version = version
                     return version
 
                 self.require(
@@ -280,6 +316,7 @@ class Releaser:
                     f"(expected: {git.VERSION_REGEX.pattern})",
                 )
                 s.ok(f"Accepting override version {self.config.version}")
+                self.version = self.config.version
                 return self.config.version
             version = self.github.next_milestone().title
             if not self.config.production:
@@ -288,6 +325,7 @@ class Releaser:
                 version = f"{version}-rc.{rc + 1}"
             self.require(re.match(git.VERSION_REGEX, version) is not None)
             s.ok(version)
+        self.version = version
         return version
 
     def stage_rename_issue(self, version: str) -> None:
@@ -931,13 +969,15 @@ class Releaser:
             self.github.close_issue(self.config.issue)
             s.ok(f"Issue {self.config.issue} closed")
 
-    def run_stages(self) -> None:
-        self.require(self.git.current_branch() == self.config.branch)
-        self.require(self.git.is_clean())
+    def run_stages(self, version: str | None = None) -> None:
+        if version is None:
+            self.require(self.git.current_branch() == self.config.branch)
+            self.require(self.git.is_clean())
 
-        self.stage_init()
+            self.stage_init()
 
-        version = self.stage_version()
+            version = self.stage_version()
+
         self.stage_rename_issue(version)
         self.stage_assign_milestone(version)
         self.stage_production_ready(version)
@@ -995,19 +1035,15 @@ def main(config: Config) -> None:
     git_prov = git.DEFAULT_GIT
     github_prov = github.DEFAULT_GITHUB
 
-    try:
-        # Stash any local changes for the user to later resume working on.
-        with git.Stash(prov=git_prov):
-            # We need to be on the main branch to create a release, but we
-            # want to return to the original branch afterwards.
-            with git.Checkout(config.branch, prov=git_prov):
-                # Undo any partial changes if the script is aborted.
-                with git.ResetOnExit(prov=git_prov):
-                    releaser = Releaser(config, git_prov, github_prov)
-                    releaser.run_stages()
-    except stage.UserAbort as e:
-        print(e.message)
-        return
+    # Stash any local changes for the user to later resume working on.
+    with git.Stash(prov=git_prov):
+        # We need to be on the main branch to create a release, but we
+        # want to return to the original branch afterwards.
+        with git.Checkout(config.branch, prov=git_prov):
+            # Undo any partial changes if the script is aborted.
+            with git.ResetOnExit(prov=git_prov):
+                releaser = Releaser(config, git_prov, github_prov)
+                releaser.run()
 
 
 if __name__ == "__main__":

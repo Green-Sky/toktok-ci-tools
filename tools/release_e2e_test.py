@@ -287,6 +287,7 @@ class FakeGit(git.Git):
         self._log: list[str] = ["initial commit"]
         self._up_to_date = False
         self._rebase_success = True
+        self._is_clean = True
 
     def current_branch(self) -> str:
         return self._current_branch
@@ -298,7 +299,7 @@ class FakeGit(git.Git):
         return self._log
 
     def is_clean(self) -> bool:
-        return True
+        return self._is_clean
 
     def branch_sha(self, branch: str) -> str:
         return "sha123"
@@ -740,6 +741,32 @@ class TestReleaseE2E(unittest.TestCase):
                 releaser.run_stages()
 
             self.assertIn("checks failed", str(cm.exception))
+
+    def test_run_reports_failure(self) -> None:
+        config = self.make_config()
+        gh = FakeGitHub()
+        gh.add_issue(
+            1,
+            "Release tracking issue: v1.0.0",
+            "### Release progress\n[ ] ...\nProduction release",
+        )
+        gh.add_milestone(1, "v1.0.0")
+
+        gt = FakeGit()
+        # Mock git.is_clean to fail to trigger an exception in run()
+        gt._is_clean = False
+
+        releaser = Releaser(config, gt, gh)
+
+        with self.release_mocks(gh, gt):
+            with self.assertRaises(Exception):
+                releaser.run()
+
+            # Verify reassignment to human
+            self.assertEqual(gh._issues[1]["assignees"], [{"login": "human"}])
+
+            # Verify failure message in dashboard
+            self.assertIn("❌ **Failure:** Requirement not met", gh._issues[1]["body"])
 
     def test_release_ci_timeout(self) -> None:
         config = self.make_config()

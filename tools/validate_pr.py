@@ -310,7 +310,7 @@ def check_changelog(failures: list[str], config: Config) -> None:
             check.ok("The changelog is up-to-date")
 
 
-def main(config: Config) -> None:
+def main(config: Config, failures: list[str] | None = None) -> None:
     """Main entry point."""
     actor = github.actor()
     if config.debug:
@@ -326,29 +326,32 @@ def main(config: Config) -> None:
 
         print("\nRunning checks...\n")
 
-    failures: list[str] = []
+    failed_checks: list[str] = failures if failures is not None else []
 
     # If the PR branch looks like a version number, do checks for a release PR.
     if config.release or re.match(git.RELEASE_BRANCH_REGEX, github.head_ref()):
         print("This is a release PR.\n")
-        check_github_weblate_prs(failures)
-        check_flathub_descriptor_dependencies(failures, config)
-        check_toxcore_version(failures)
-        check_package_versions(failures, config)
+        check_github_weblate_prs(failed_checks)
+        check_flathub_descriptor_dependencies(failed_checks, config)
+        check_toxcore_version(failed_checks)
+        check_package_versions(failed_checks, config)
     else:
         print(f"This is not a release PR ({git.RELEASE_BRANCH_REGEX.pattern}).\n")
-        check_no_version_changes(failures)
+        check_no_version_changes(failed_checks)
 
-    check_changelog(failures, config)
+    check_changelog(failed_checks, config)
 
     if config.debug:
         print(f"\nDebug: {len(github.api_requests)} GitHub API requests made")
 
-    if failures:
+    if failed_checks:
         print("\nSome checks failed:")
-        for failure in failures:
+        for failure in failed_checks:
             print(f"  - {failure}")
-        exit(1)
+
+        if failures is None:
+            exit(1)
+        raise stage.InvalidState(f"{len(failed_checks)} checks failed")
 
 
 if __name__ == "__main__":

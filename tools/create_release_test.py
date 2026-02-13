@@ -5,6 +5,7 @@ import unittest
 from unittest.mock import MagicMock
 
 from create_release import Config, Releaser
+from lib import stage
 
 
 class TestDashboardRenderer(unittest.TestCase):
@@ -70,13 +71,28 @@ class TestReleaserLogic(unittest.TestCase):
         self.git = MagicMock()
         self.releaser = Releaser(self.config, self.git, self.github)
 
+    def test_run_catches_base_exception(self) -> None:
+        # Mock run_stages to raise SystemExit (a BaseException)
+        with unittest.mock.patch.object(
+            self.releaser, "run_stages", side_effect=SystemExit(1)
+        ), unittest.mock.patch.object(
+            self.releaser, "report_failure", side_effect=stage.UserAbort("failed")
+        ) as mock_report:
+            with self.assertRaises(stage.UserAbort):
+                self.releaser.run()
+
+            mock_report.assert_called()
+            args, kwargs = mock_report.call_args
+            self.assertIsInstance(args[1], SystemExit)
+
     def test_report_failure(self) -> None:
         self.github.actor.return_value = "human"
         self.github.get_issue.return_value = MagicMock(
             body="### Release progress\n[ ] ..."
         )
 
-        self.releaser.report_failure("v1.0.0", Exception("Something went wrong"))
+        with self.assertRaises(stage.UserAbort):
+            self.releaser.report_failure("v1.0.0", Exception("Something went wrong"))
 
         # Check that issue was reassigned
         self.github.issue_unassign.assert_called_with(1, ["toktok-releaser"])

@@ -146,14 +146,16 @@ class Releaser:
             s.ok(f"Assigned to {self.github.actor()}")
         return stage.UserAbort(f"Returning to the user to {action}")
 
-    def report_failure(self, version: str, exception: Exception) -> None:
+    def report_failure(
+        self, version: str, exception: Exception | BaseException
+    ) -> None:
         """Report a failure to the release tracking issue."""
         if not self.config.issue:
             return
 
         print(f"Reporting failure to tracking issue #{self.config.issue}...")
         instruction = f"❌ **Failure:** {exception}"
-        self.assign_to_user(
+        raise self.assign_to_user(
             None,
             version,
             action="fix the failure",
@@ -166,7 +168,7 @@ class Releaser:
             self.run_stages()
         except stage.UserAbort as e:
             print(e.message)
-        except Exception as e:
+        except (Exception, BaseException) as e:
             self.report_failure(self.version, e)
             raise e
 
@@ -440,7 +442,8 @@ class Releaser:
             validate_pr.Config(
                 commit=not self.config.verify,
                 release=self.config.production,
-            )
+            ),
+            failures=[],
         )
 
     def extract_issue_release_notes(self, body: str) -> str:
@@ -989,6 +992,7 @@ class Releaser:
             self.stage_branch(version)
             self.stage_gitignore()
             self.stage_validate()
+            self.update_dashboard(version)
             self.stage_release_notes(version)
             self.stage_commit(version)
             self.stage_push()

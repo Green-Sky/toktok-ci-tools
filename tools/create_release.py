@@ -5,7 +5,6 @@ import argparse
 import os
 import re
 import subprocess  # nosec
-import traceback
 from dataclasses import dataclass
 
 import create_tarballs
@@ -152,6 +151,7 @@ class Releaser:
         if not self.config.issue:
             return
 
+        print(f"Reporting failure to tracking issue #{self.config.issue}...")
         instruction = f"❌ **Failure:** {exception}"
         self.assign_to_user(
             None,
@@ -167,7 +167,6 @@ class Releaser:
         except stage.UserAbort as e:
             print(e.message)
         except Exception as e:
-            traceback.print_exc()
             self.report_failure(self.version, e)
             raise e
 

@@ -97,6 +97,25 @@ mv squashfs-root "$TOOL_EXTRACT_DIR"
 # This line in the appimagetool breaks musl DNS lookups (looking for /EEE/resolv.conf).
 sed -i -e 's!/EEE!/etc!g' "$TOOL_EXTRACT_DIR/usr/bin/appimagetool"
 
+# appimagetool (go-appimage) passes -fstime to mksquashfs, which conflicts with
+# SOURCE_DATE_EPOCH environment variable. We wrap mksquashfs to strip -fstime,
+# allowing it to honor SOURCE_DATE_EPOCH for the superblock as well.
+mv "$TOOL_EXTRACT_DIR/usr/bin/mksquashfs" "$TOOL_EXTRACT_DIR/usr/bin/mksquashfs.real"
+cat >"$TOOL_EXTRACT_DIR/usr/bin/mksquashfs" <<'EOF'
+#!/usr/bin/env bash
+args=()
+while [[ $# -gt 0 ]]; do
+  if [[ "$1" == "-fstime" ]]; then
+    shift 2
+  else
+    args+=("$1")
+    shift
+  fi
+done
+exec "$(dirname "$0")/mksquashfs.real" "${args[@]}"
+EOF
+chmod +x "$TOOL_EXTRACT_DIR/usr/bin/mksquashfs"
+
 export PKG_CONFIG_PATH=/opt/buildhome/lib/pkgconfig
 
 ccache --zero-stats
@@ -118,13 +137,6 @@ cmake --install _build --prefix "$PROJECT_NAME.AppDir/usr"
 
 ccache --show-stats
 
-# Normalize file permissions and timestamps for reproducibility
-echo "Normalizing AppDir..."
-find "$PROJECT_APP_DIR" -exec touch -h -d @"$SOURCE_DATE_EPOCH" {} +
-find "$PROJECT_APP_DIR" -type d -exec chmod 0755 {} +
-find "$PROJECT_APP_DIR" -type f -perm /0111 -exec chmod 0755 {} +
-find "$PROJECT_APP_DIR" -type f ! -perm /0111 -exec chmod 0644 {} +
-
 export QTDIR=/opt/buildhome/qt
 export LD_LIBRARY_PATH="/opt/buildhome/lib:/opt/buildhome/lib64:$QTDIR/lib"
 
@@ -137,15 +149,19 @@ cp -r "$QTDIR/plugins/tls/" "$PROJECT_APP_DIR/$QTDIR/plugins/"
 
 "$TOOL_EXTRACT_DIR/AppRun" -s deploy "$PROJECT_APP_DIR"/usr/share/applications/*.desktop
 
+# Normalize file permissions and timestamps for reproducibility
+echo "Normalizing AppDir..."
+find "$PROJECT_APP_DIR" -exec touch -h -d @"$SOURCE_DATE_EPOCH" {} +
+find "$PROJECT_APP_DIR" -type d -exec chmod 0755 {} +
+find "$PROJECT_APP_DIR" -type f -perm /0111 -exec chmod 0755 {} +
+find "$PROJECT_APP_DIR" -type f ! -perm /0111 -exec chmod 0644 {} +
+
 # print all links not contained inside the AppDir
 LD_LIBRARY_PATH='' find "$PROJECT_APP_DIR" -type f -exec ldd {} \; 2>&1 | grep '=>' | grep -v "$PROJECT_APP_DIR"
 
-# appimagetool (go-appimage) passes -fstime to mksquashfs, which conflicts with
-# SOURCE_DATE_EPOCH environment variable.
-(
-  unset SOURCE_DATE_EPOCH
-  "$TOOL_EXTRACT_DIR/AppRun" "$PROJECT_APP_DIR"
-)
+# appimagetool (go-appimage) uses SOURCE_DATE_EPOCH for the SquashFS creation
+# time if set.
+"$TOOL_EXTRACT_DIR/AppRun" "$PROJECT_APP_DIR"
 
 # Deterministic filename
 readonly SHA="$(git rev-parse --short HEAD | head -c7)"

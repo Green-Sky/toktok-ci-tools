@@ -617,7 +617,11 @@ class Releaser:
             # Can't do this on CI.
             return
         with stage.Stage("Restyled", "Applying restyled fixes", parent=parent) as s:
-            subprocess.run(["hub-restyled"], check=True)  # nosec
+            script_dir = os.path.dirname(os.path.realpath(__file__))
+            hub_restyled = os.path.join(script_dir, "hub-restyled")
+            if not os.path.exists(hub_restyled):
+                hub_restyled = "hub-restyled"
+            subprocess.run([hub_restyled], check=True)  # nosec
             if self.git.is_clean():
                 raise s.fail("Failed to apply restyled changes")
             self.git.add(".")

@@ -4,10 +4,13 @@
 import argparse
 import os
 import re
+import shutil
 import subprocess  # nosec
+import tempfile
 from dataclasses import dataclass
 
 import create_tarballs
+import requests
 import sign_release_assets
 import sign_tag
 import validate_pr
@@ -619,9 +622,29 @@ class Releaser:
         with stage.Stage("Restyled", "Applying restyled fixes", parent=parent) as s:
             script_dir = os.path.dirname(os.path.realpath(__file__))
             hub_restyled = os.path.join(script_dir, "hub-restyled")
+
+            downloaded = False
             if not os.path.exists(hub_restyled):
-                hub_restyled = "hub-restyled"
-            subprocess.run([hub_restyled], check=True)  # nosec
+                path_version = shutil.which("hub-restyled")
+                if path_version:
+                    hub_restyled = path_version
+                else:
+                    s.progress("Downloading hub-restyled")
+                    url = "https://raw.githubusercontent.com/TokTok/hs-github-tools/master/tools/hub-restyled"
+                    r = requests.get(url, timeout=60)
+                    r.raise_for_status()
+                    with tempfile.NamedTemporaryFile(delete=False) as f:
+                        f.write(r.content)
+                        hub_restyled = f.name
+                    os.chmod(hub_restyled, 0o700)
+                    downloaded = True
+
+            try:
+                subprocess.run([hub_restyled], check=True)  # nosec
+            finally:
+                if downloaded:
+                    os.unlink(hub_restyled)
+
             if self.git.is_clean():
                 raise s.fail("Failed to apply restyled changes")
             self.git.add(".")

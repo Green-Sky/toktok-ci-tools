@@ -48,11 +48,6 @@ jobs:
       - name: Link ci-tools
         if: github.repository == 'TokTok/ci-tools'
         run: ln -s .. third_party/ci-tools
-      - name: Download hub-restyled
-        run: |
-          mkdir -p third_party/ci-tools/tools
-          curl -sSL https://raw.githubusercontent.com/TokTok/hs-github-tools/master/tools/hub-restyled -o third_party/ci-tools/tools/hub-restyled
-          chmod +x third_party/ci-tools/tools/hub-restyled
       - name: Create GitHub actions identity
         run: third_party/ci-tools/tools/use_github_actions_identity.sh
       - name: Set up git upstream remote

@@ -1,3 +1,29 @@
+<a name="v0.8.4"></a>
+
+## v0.8.4 (2026-02-17)
+
+### Release notes
+
+Here's a new ci-tools release to test the release workflow.
+
+#### Bug Fixes
+
+- Fetch hub-restyled to a temporary file during release. ([b9d45f1b](https://github.com/TokTok/ci-tools/commit/b9d45f1b0296ba14187d5d126c3e78deee273ebb))
+- Ensure bit-for-bit reproducibility of AppImage builds. ([2735bd77](https://github.com/TokTok/ci-tools/commit/2735bd77fa84f6a84614b8b0f93c5e4a6fa502db))
+- Ensure hub-restyled is available during release. ([3dfd6827](https://github.com/TokTok/ci-tools/commit/3dfd6827e94770b1591a3bba5b01a3274f254d18))
+- Ensure validation failures are reported to the release dashboard. ([bd8b5bad](https://github.com/TokTok/ci-tools/commit/bd8b5bad7b9a5d71818e3abfaee412415ccb67eb))
+- Add libgles2 to the dependencies of flutter linux. ([4d0b278c](https://github.com/TokTok/ci-tools/commit/4d0b278cc45734c640f7d44515d91959756a9eb1))
+- Use `--no-name` to make reproducible gzip tarballs. ([4112161c](https://github.com/TokTok/ci-tools/commit/4112161caa68139213e83129721d31a228fa3de7))
+- Find release issue more reliably in GitHub Actions. ([c9bb07c5](https://github.com/TokTok/ci-tools/commit/c9bb07c5dd7b9466bf2fb499f455d45e3d5a5ddf))
+
+#### Features
+
+- Report release script failures to the tracking issue dashboard. ([e56a4980](https://github.com/TokTok/ci-tools/commit/e56a498019613e71b67f9f165539a974709646ab))
+- Use unified naming convention for iOS artifacts. ([24fe8cff](https://github.com/TokTok/ci-tools/commit/24fe8cff4427a991260f1adc5c9dd1253fc571cb))
+- Add an iOS workflow for Qt applications. ([b6bb8a8d](https://github.com/TokTok/ci-tools/commit/b6bb8a8d77117755de1c4cf7e96372a0d09e644f))
+- Improve reproducibility of AppImage builds. ([37533678](https://github.com/TokTok/ci-tools/commit/375336785ce04ba077ebfee7915daf0dc63ab5f7))
+- Collapse RC changelogs when a production release exists. ([2f7917df](https://github.com/TokTok/ci-tools/commit/2f7917df0d9ee22a1afdd15e90717a72fdd13e28))
+
 <a name="v0.8.3"></a>
 
 ## v0.8.3 (2026-02-06)

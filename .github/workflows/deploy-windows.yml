@@ -192,8 +192,6 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: ${{ steps.artifact.outputs.artifact-ref }}
-      - name: Install 7zip
-        run: choco install -y 7zip
       - name: Unpack exe
         run: 7z x ${{ steps.artifact.outputs.artifact }} -o${{ steps.artifact.outputs.binary-name }}
       - name: Run application binary

@@ -31,13 +31,13 @@ jobs:
     steps:
       - name: Install prerequisites
         run: sudo apt-get install -y --no-install-recommends pcregrep
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0
           submodules: true
       - name: Checkout ci-tools
         if: github.repository != 'TokTok/ci-tools'
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           repository: TokTok/ci-tools
           path: third_party/ci-tools
@@ -56,7 +56,7 @@ jobs:
           "${{ inputs.project-name }}"
           ${{ inputs.artifact-source }}
       - name: Upload artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: ${{ steps.sha256.outputs.project-name }}-${{ github.sha }}-${{ inputs.build }}
           path: ${{ steps.sha256.outputs.artifacts }}

@@ -12,11 +12,11 @@ jobs:
     steps:
       - name: Install python dependencies
         run: sudo apt-get update && sudo apt-get install python3-requests
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           ref: ${{ github.event.pull_request.head.sha }}
       - name: Checkout TokTok/ci-tools
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           repository: TokTok/ci-tools
           path: ci-tools
